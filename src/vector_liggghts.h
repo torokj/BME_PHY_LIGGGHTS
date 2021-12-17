@@ -551,6 +551,18 @@ inline void normalize_bary(double *v)
   v[2]/=mag;
 }
 
+inline void vectorToBuf2D(double const*vec,double *buf,int &m)
+{
+  buf[m++] = vec[0];
+  buf[m++] = vec[1];
+}
+
+inline void bufToVector2D(double *vec,double const*buf,int &m)
+{
+  vec[0] = buf[m++];
+  vec[1] = buf[m++];
+}
+
 inline void vectorToBuf3D(double const*vec,double *buf,int &m)
 {
   buf[m++] = vec[0];

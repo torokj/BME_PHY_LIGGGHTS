@@ -97,6 +97,10 @@ class FixWallGran : public Fix, public LIGGGHTS::IContactHistorySetup {
   inline FixPropertyAtom* fix_wallforce() const
   { return fix_wallforce_; }
 
+  inline int get_walltype() {
+    return(wtype);
+  }
+
   inline int iarg() const
   { return iarg_; }
 
@@ -214,6 +218,8 @@ class FixWallGran : public Fix, public LIGGGHTS::IContactHistorySetup {
 
   int iarg_, narg_;
   int atom_type_wall_;
+  int wtype;
+  int middle;
 
   int computeflag_;
 

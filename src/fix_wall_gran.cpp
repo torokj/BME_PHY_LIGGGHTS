@@ -116,6 +116,7 @@ FixWallGran::FixWallGran(LAMMPS *lmp, int narg, char **arg) :
     stress_flag_ = false;
     n_FixMesh_ = 0;
     dnum_ = 0;
+    middle = 0;
 
     r0_ = 0.;
 
@@ -218,6 +219,7 @@ FixWallGran::FixWallGran(LAMMPS *lmp, int narg, char **arg) :
              if(strcmp(wallstyle,PRIMITIVE_WALL_DEFINITIONS::wallString[w]) == 0)
              {
                primitiveWall_ = new PrimitiveWall(lmp,(PRIMITIVE_WALL_DEFINITIONS::WallType)w,nPrimitiveArgs,argVec);
+	       wtype = w;
                setflag = true;
                break;
              }
@@ -308,12 +310,19 @@ FixWallGran::FixWallGran(LAMMPS *lmp, int narg, char **arg) :
           }
           hasargs = true;
           iarg_ += 1+n_FixMesh_;
+        } else if (strcmp(arg[iarg_],"middle") == 0) {
+	  middle = 1;
+	  iarg_ ++;
         } else if (strcmp(arg[iarg_],"shear") == 0) {
           if (iarg_+3 > narg)
             error->fix_error(FLERR,this,"not enough arguments for 'shear'");
           if(!primitiveWall_)
             error->fix_error(FLERR,this,"have to define primitive wall before 'shear'. For mehs walls, please use fix move/mesh");
 
+	  if (strcmp(arg[iarg_+1],"middle") == 0) {
+	    middle = 1;
+	    iarg_ ++;
+	  }
           if (strcmp(arg[iarg_+1],"x") == 0) shearDim_ = 0;
           else if (strcmp(arg[iarg_+1],"y") == 0) shearDim_ = 1;
           else if (strcmp(arg[iarg_+1],"z") == 0) shearDim_ = 2;
@@ -1024,6 +1033,7 @@ void FixWallGran::post_force_mesh(int vflag)
 void FixWallGran::post_force_primitive(int vflag)
 {
   int *mask = atom->mask;
+  int j;
 
   SurfacesIntersectData sidata;
   sidata.is_wall = true;
@@ -1133,10 +1143,20 @@ void FixWallGran::post_force_primitive(int vflag)
       sidata.delta[1] = -delta[1];
       sidata.delta[2] = -delta[2];
 
-      if(impl)
+      if(impl) {
+
+	if (middle) {
+	  for(int i = 0; i < 3; i++) {
+	    j = (i + 1) % 3;
+	    if (j == wtype) j = (i + 1) % 3;
+	    if (v_wall[i] != 0.0) {
+	      if (x_[iPart][j] < 0) v_wall[i] = -fabs(v_wall[i]);
+	      else v_wall[i] = fabs(v_wall[i]);
+	    }
+	  }
+	}
         impl->compute_force(this, sidata, intersectflag, v_wall);
-      else
-      {
+      } else {
         sidata.r =  r0_ - sidata.deltan;
         compute_force(sidata, v_wall); // LEGACY CODE (SPH)
       }

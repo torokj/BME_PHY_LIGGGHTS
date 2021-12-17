@@ -85,7 +85,7 @@
 using namespace LAMMPS_NS;
 
 enum{INT,DOUBLE,STRING}; // same as in DumpCFG
-enum{X1,X2,CP,V1,V2,ID1,ID2,F,FN,FT,TORQUE,TORQUEN,TORQUET,AREA,DELTA,HEAT,MSID1,MSID2}; // dumps positions, force, normal and tangential forces, torque, normal and tangential torque
+enum{X1,X2,CP,V1,V2,ID1,ID2,F,FN,FT,TORQUE,TORQUEN,TORQUET,AREA,DELTA,HEAT,MSID1,MSID2,QUAT1,QUAT2,SHAPE1,SHAPE2,BLOCKINESS1,BLOCKINESS2,INERTIA1,INERTIA2,VOLUME1,VOLUME2,PARTICLEAREA1,PARTICLEAREA2}; // dumps positions, force, normal and tangential forces, torque, normal and tangential torque
 
 /* ---------------------------------------------------------------------- */
 
@@ -108,6 +108,7 @@ DumpLocalGran::DumpLocalGran(LAMMPS *lmp, int _igroup, int _nclusterprocs, int _
     cpgl_(0),
     n_calls_(0)
 {
+    simplified = false;
     pack_choice.clear();
     vtype.clear();
     name.clear();
@@ -128,6 +129,7 @@ DumpLocalGran::~DumpLocalGran()
 int DumpLocalGran::parse_parameters(const int narg, const char *const *const arg, bool optional_keyword, std::list<std::string> keyword_list)
 {
     int iarg = 0;
+    keyword_list.push_back(std::string("simplified"));
 
     if (narg < 1)
         error->all(FLERR, "dump local/gran is missing arguments");
@@ -170,6 +172,10 @@ int DumpLocalGran::parse_parameters(const int narg, const char *const *const arg
             if (it->compare(arg[iarg]) == 0)
             {
                 found_keyword = true;
+                // if one of the arguments is "simplified", then we switch the boolean value indicating it
+                if(std::string("simplified").compare(arg[iarg]) == 0){
+                    simplified = true;
+                }
                 break;
             }
         }
@@ -299,6 +305,10 @@ void DumpLocalGran::pack(int *ids)
             // increase n by length of data
             if(vector_set.find(it->first) != vector_set.end())
                 n += 3;
+            else if(vector2d_set.find(it->first) != vector2d_set.end())
+                n += 2;
+            else if (quaternion_set.find(it->first) != quaternion_set.end())
+                n += 4;
             else
                 n++;
 
@@ -317,32 +327,45 @@ void DumpLocalGran::buf2arrays(int n, double *mybuf)
     for (int idata=0; idata < n; ++idata) {
 
         // stores the ID of newly added points
-        vtkIdType pid[2];
+        int j;
+        if(simplified){
+            // even if the output is simplified, we need to add at least a single line to the dump file
+            // otherwise it does not work for some reason
+            if(idata == 0){
+                vtkSmartPointer<vtkLine> line0 = vtkSmartPointer<vtkLine>::New();
+                vtkIdType pid = points->InsertNextPoint(mybuf[idata*size_one],mybuf[idata*size_one+1],mybuf[idata*size_one+2]);
+                line0->GetPointIds()->SetId(0,pid);
+                line0->GetPointIds()->SetId(1,pid);
+                lineCells->InsertNextCell(line0);
+            }
+            j = 0;
+        } else {
+            vtkIdType pid[2];
 
-        pid[0] = points->InsertNextPoint(mybuf[idata*size_one],mybuf[idata*size_one+1],mybuf[idata*size_one+2]);
-        pid[1] = points->InsertNextPoint(mybuf[idata*size_one+3],mybuf[idata*size_one+4],mybuf[idata*size_one+5]);
+            pid[0] = points->InsertNextPoint(mybuf[idata*size_one],mybuf[idata*size_one+1],mybuf[idata*size_one+2]);
+            pid[1] = points->InsertNextPoint(mybuf[idata*size_one+3],mybuf[idata*size_one+4],mybuf[idata*size_one+5]);
 
-        // define the line going from point pid[0] to pid[1]
-        vtkSmartPointer<vtkLine> line0 = vtkSmartPointer<vtkLine>::New();
-        line0->GetPointIds()->SetId(0,pid[0]);
-        line0->GetPointIds()->SetId(1,pid[1]);
-
-        lineCells->InsertNextCell(line0);
-        if(have_cp)
-        {
-            vtkIdType pidCP[1];
-            pidCP[0] = points->InsertNextPoint(mybuf[idata*size_one+6],mybuf[idata*size_one+7],mybuf[idata*size_one+8]);
+            // define the line going from point pid[0] to pid[1]
+            vtkSmartPointer<vtkLine> line0 = vtkSmartPointer<vtkLine>::New();
             line0->GetPointIds()->SetId(0,pid[0]);
-            line0->GetPointIds()->SetId(1,pidCP[0]);
-            lineCells->InsertNextCell(line0);
-            line0->GetPointIds()->SetId(0,pid[1]);
-            line0->GetPointIds()->SetId(1,pidCP[0]);
-            lineCells->InsertNextCell(line0);
-        }
+            line0->GetPointIds()->SetId(1,pid[1]);
 
-        int j = 6; // 0,1,2,3,4,5 = 2 * (x,y,z) handled just above
-        if(have_cp)
-            j += 3;
+            lineCells->InsertNextCell(line0);
+            if(have_cp)
+            {
+                vtkIdType pidCP[1];
+                pidCP[0] = points->InsertNextPoint(mybuf[idata*size_one+6],mybuf[idata*size_one+7],mybuf[idata*size_one+8]);
+                line0->GetPointIds()->SetId(0,pid[0]);
+                line0->GetPointIds()->SetId(1,pidCP[0]);
+                lineCells->InsertNextCell(line0);
+                line0->GetPointIds()->SetId(0,pid[1]);
+                line0->GetPointIds()->SetId(1,pidCP[0]);
+                lineCells->InsertNextCell(line0);
+            }
+            j = 6; // 0,1,2,3,4,5 = 2 * (x,y,z) handled just above
+            if(have_cp)
+                j += 3;
+        }
         for (std::map<int, vtkSmartPointer<vtkAbstractArray> >::iterator it=myarrays.begin(); it!=myarrays.end(); ++it) {
 
             vtkAbstractArray *paa = it->second;
@@ -355,7 +378,7 @@ void DumpLocalGran::buf2arrays(int n, double *mybuf)
                                                          static_cast<int>(mybuf[idata*size_one+j+2]) };
                             vtkIntArray *pia = static_cast<vtkIntArray*>(paa);
                             pia->InsertNextTupleValue(iv3);
-                            if (have_cp)
+                            if (have_cp && !simplified)
                             {
                                 pia->InsertNextTupleValue(iv3);
                                 pia->InsertNextTupleValue(iv3);
@@ -366,7 +389,7 @@ void DumpLocalGran::buf2arrays(int n, double *mybuf)
                         {
                             vtkDoubleArray *pda = static_cast<vtkDoubleArray*>(paa);
                             pda->InsertNextTupleValue(&mybuf[idata*size_one+j]);
-                            if (have_cp)
+                            if (have_cp && !simplified)
                             {
                                 pda->InsertNextTupleValue(&mybuf[idata*size_one+j]);
                                 pda->InsertNextTupleValue(&mybuf[idata*size_one+j]);
@@ -375,13 +398,71 @@ void DumpLocalGran::buf2arrays(int n, double *mybuf)
                         }
                 }
                 j+=3;
+            } else if (it->second->GetNumberOfComponents() == 4) {
+                switch (vtype[it->first]) {
+                    case INT:
+                        {
+                            int iv4[4] = { static_cast<int>(mybuf[idata*size_one+j  ]),
+                                                         static_cast<int>(mybuf[idata*size_one+j+1]),
+                                                         static_cast<int>(mybuf[idata*size_one+j+2]),
+                                                         static_cast<int>(mybuf[idata*size_one+j+3]) };
+                            vtkIntArray *pia = static_cast<vtkIntArray*>(paa);
+                            pia->InsertNextTupleValue(iv4);
+                            if (have_cp && !simplified)
+                            {
+                                pia->InsertNextTupleValue(iv4);
+                                pia->InsertNextTupleValue(iv4);
+                            }
+                            break;
+                        }
+                    case DOUBLE:
+                        {
+                            vtkDoubleArray *pda = static_cast<vtkDoubleArray*>(paa);
+                            pda->InsertNextTupleValue(&mybuf[idata*size_one+j]);
+                            if (have_cp && !simplified)
+                            {
+                                pda->InsertNextTupleValue(&mybuf[idata*size_one+j]);
+                                pda->InsertNextTupleValue(&mybuf[idata*size_one+j]);
+                            }
+                            break;
+                        }
+                }
+                j+=4;
+            } else if (it->second->GetNumberOfComponents() == 2) {
+                switch (vtype[it->first]) {
+                    case INT:
+                        {
+                            int iv2[2] = { static_cast<int>(mybuf[idata*size_one+j  ]),
+                                                         static_cast<int>(mybuf[idata*size_one+j+1])};
+                            vtkIntArray *pia = static_cast<vtkIntArray*>(paa);
+                            pia->InsertNextTupleValue(iv2);
+                            if (have_cp && !simplified)
+                            {
+                                pia->InsertNextTupleValue(iv2);
+                                pia->InsertNextTupleValue(iv2);
+                            }
+                            break;
+                        }
+                    case DOUBLE:
+                        {
+                            vtkDoubleArray *pda = static_cast<vtkDoubleArray*>(paa);
+                            pda->InsertNextTupleValue(&mybuf[idata*size_one+j]);
+                            if (have_cp && !simplified)
+                            {
+                                pda->InsertNextTupleValue(&mybuf[idata*size_one+j]);
+                                pda->InsertNextTupleValue(&mybuf[idata*size_one+j]);
+                            }
+                            break;
+                        }
+                }
+                j+=2;
             } else {
                 switch (vtype[it->first]) {
                     case INT:
                         {
                             vtkIntArray *pia = static_cast<vtkIntArray*>(paa);
                             pia->InsertNextValue(mybuf[idata*size_one+j]);
-                            if (have_cp)
+                            if (have_cp && !simplified)
                             {
                                 pia->InsertNextValue(mybuf[idata*size_one+j]);
                                 pia->InsertNextValue(mybuf[idata*size_one+j]);
@@ -392,7 +473,7 @@ void DumpLocalGran::buf2arrays(int n, double *mybuf)
                         {
                             vtkDoubleArray *pda = static_cast<vtkDoubleArray*>(paa);
                             pda->InsertNextValue(mybuf[idata*size_one+j]);
-                            if (have_cp)
+                            if (have_cp && !simplified)
                             {
                                 pda->InsertNextValue(mybuf[idata*size_one+j]);
                                 pda->InsertNextValue(mybuf[idata*size_one+j]);
@@ -457,10 +538,12 @@ void DumpLocalGran::reset_vtk_data_containers()
 
     std::map<int,int>::iterator it=vtype.begin();
 
-    ++it;
-    ++it;
-    if(cpgl_->offset_contact_point() >= 0)
-      ++it;
+    if(!simplified){
+        ++it;
+        ++it;
+        if(cpgl_->offset_contact_point() >= 0)
+            ++it;
+    }
 
     for (; it!=vtype.end(); ++it) {
 
@@ -480,6 +563,12 @@ void DumpLocalGran::reset_vtk_data_containers()
         // part 2: if vector, set length to 3; set name
         if (vector_set.find(it->first) != vector_set.end()) {
             myarrays[it->first]->SetNumberOfComponents(3);
+            myarrays[it->first]->SetName(name[it->first].c_str());
+        } else if (vector2d_set.find(it->first) != vector2d_set.end()) {
+            myarrays[it->first]->SetNumberOfComponents(2);
+            myarrays[it->first]->SetName(name[it->first].c_str());
+        } else if (quaternion_set.find(it->first) != quaternion_set.end()) {
+            myarrays[it->first]->SetNumberOfComponents(4);
             myarrays[it->first]->SetName(name[it->first].c_str());
         } else {
             myarrays[it->first]->SetName(name[it->first].c_str());
@@ -629,6 +718,102 @@ void DumpLocalGran::define_properties()
             pack_choice[MSID2] = &DumpLocalGran::pack_ms_id2;
             vtype[MSID2] = DOUBLE;
             name[MSID2] = "ms_id2";
+            //scalar
+    }
+
+    if(cpgl_->offset_quaternion1() >= 0)
+    {
+            pack_choice[QUAT1] = &DumpLocalGran::pack_quaternion1;
+            vtype[QUAT1] = DOUBLE;
+            name[QUAT1] = "quat1";
+            quaternion_set.insert(QUAT1);
+    }
+
+    if(cpgl_->offset_quaternion2() >= 0)
+    {
+            pack_choice[QUAT2] = &DumpLocalGran::pack_quaternion2;
+            vtype[QUAT2] = DOUBLE;
+            name[QUAT2] = "quat2";
+            quaternion_set.insert(QUAT2);
+    }
+
+    if(cpgl_->offset_shape1() >= 0)
+    {
+            pack_choice[SHAPE1] = &DumpLocalGran::pack_shape1;
+            vtype[SHAPE1] = DOUBLE;
+            name[SHAPE1] = "shape1";
+            vector_set.insert(SHAPE1);
+    }
+    
+    if(cpgl_->offset_shape2() >= 0)
+    {
+            pack_choice[SHAPE2] = &DumpLocalGran::pack_shape2;
+            vtype[SHAPE2] = DOUBLE;
+            name[SHAPE2] = "shape2";
+            vector_set.insert(SHAPE2);
+    }
+
+    if(cpgl_->offset_blockiness1() >= 0)
+    {
+            pack_choice[BLOCKINESS1] = &DumpLocalGran::pack_blockiness1;
+            vtype[BLOCKINESS1] = DOUBLE;
+            name[BLOCKINESS1] = "blockiness1";
+            vector2d_set.insert(BLOCKINESS1);
+    }
+    
+    if(cpgl_->offset_blockiness2() >= 0)
+    {
+            pack_choice[BLOCKINESS2] = &DumpLocalGran::pack_blockiness2;
+            vtype[BLOCKINESS2] = DOUBLE;
+            name[BLOCKINESS2] = "blockiness2";
+            vector2d_set.insert(BLOCKINESS2);
+    }
+
+    if(cpgl_->offset_inertia1() >= 0)
+    {
+            pack_choice[INERTIA1] = &DumpLocalGran::pack_inertia1;
+            vtype[INERTIA1] = DOUBLE;
+            name[INERTIA1] = "inertia1";
+            vector_set.insert(INERTIA1);
+    }
+
+    if(cpgl_->offset_inertia2() >= 0)
+    {
+            pack_choice[INERTIA2] = &DumpLocalGran::pack_inertia2;
+            vtype[INERTIA2] = DOUBLE;
+            name[INERTIA2] = "inertia2";
+            vector_set.insert(INERTIA2);
+    }
+
+    if(cpgl_->offset_volume1() >= 0)
+    {
+            pack_choice[VOLUME1] = &DumpLocalGran::pack_volume1;
+            vtype[VOLUME1] = DOUBLE;
+            name[VOLUME1] = "volume1";
+            //scalar
+    }
+
+    if(cpgl_->offset_volume2() >= 0)
+    {
+            pack_choice[VOLUME2] = &DumpLocalGran::pack_volume2;
+            vtype[VOLUME2] = DOUBLE;
+            name[VOLUME2] = "volume2";
+            //scalar
+    }
+
+    if(cpgl_->offset_particlearea1() >= 0)
+    {
+            pack_choice[PARTICLEAREA1] = &DumpLocalGran::pack_particlearea1;
+            vtype[PARTICLEAREA1] = DOUBLE;
+            name[PARTICLEAREA1] = "particlearea1";
+            //scalar
+    }
+
+    if(cpgl_->offset_particlearea2() >= 0)
+    {
+            pack_choice[PARTICLEAREA2] = &DumpLocalGran::pack_particlearea2;
+            vtype[PARTICLEAREA2] = DOUBLE;
+            name[PARTICLEAREA2] = "particlearea2";
             //scalar
     }
 }
@@ -858,6 +1043,126 @@ void DumpLocalGran::pack_ms_id1(int n)
 void DumpLocalGran::pack_ms_id2(int n)
 {
     int offset = cpgl_->offset_ms_id2();
+
+    for (int i = 0; i < nchoose; i++) {
+        buf[n] = cpgl_->get_data()[i][offset];
+        n += size_one;
+    }
+}
+
+void DumpLocalGran::pack_quaternion1(int n)
+{
+    int offset = cpgl_->offset_quaternion1();
+
+    for (int i = 0; i < nchoose; i++) {
+        vectorCopy4D(&cpgl_->get_data()[i][offset],&buf[n]);
+        n += size_one;
+    }
+}
+
+void DumpLocalGran::pack_quaternion2(int n)
+{
+    int offset = cpgl_->offset_quaternion2();
+
+    for (int i = 0; i < nchoose; i++) {
+        vectorCopy4D(&cpgl_->get_data()[i][offset],&buf[n]);
+        n += size_one;
+    }
+}
+
+void DumpLocalGran::pack_shape1(int n)
+{
+    int offset = cpgl_->offset_shape1();
+
+    for (int i = 0; i < nchoose; i++) {
+        vectorCopy3D(&cpgl_->get_data()[i][offset],&buf[n]);
+        n += size_one;
+    }
+}
+
+void DumpLocalGran::pack_shape2(int n)
+{
+    int offset = cpgl_->offset_shape2();
+
+    for (int i = 0; i < nchoose; i++) {
+        vectorCopy3D(&cpgl_->get_data()[i][offset],&buf[n]);
+        n += size_one;
+    }
+}
+
+void DumpLocalGran::pack_blockiness1(int n)
+{
+    int offset = cpgl_->offset_blockiness1();
+
+    for (int i = 0; i < nchoose; i++) {
+        vectorCopy2D(&cpgl_->get_data()[i][offset],&buf[n]);
+        n += size_one;
+    }
+}
+
+void DumpLocalGran::pack_blockiness2(int n)
+{
+    int offset = cpgl_->offset_blockiness2();
+
+    for (int i = 0; i < nchoose; i++) {
+        vectorCopy2D(&cpgl_->get_data()[i][offset],&buf[n]);
+        n += size_one;
+    }
+}
+
+void DumpLocalGran::pack_inertia1(int n)
+{
+    int offset = cpgl_->offset_inertia1();
+
+    for (int i = 0; i < nchoose; i++) {
+        vectorCopy3D(&cpgl_->get_data()[i][offset],&buf[n]);
+        n += size_one;
+    }
+}
+
+void DumpLocalGran::pack_inertia2(int n)
+{
+    int offset = cpgl_->offset_inertia2();
+
+    for (int i = 0; i < nchoose; i++) {
+        vectorCopy3D(&cpgl_->get_data()[i][offset],&buf[n]);
+        n += size_one;
+    }
+}
+
+void DumpLocalGran::pack_volume1(int n)
+{
+    int offset = cpgl_->offset_volume1();
+
+    for (int i = 0; i < nchoose; i++) {
+        buf[n] = cpgl_->get_data()[i][offset];
+        n += size_one;
+    }
+}
+
+void DumpLocalGran::pack_volume2(int n)
+{
+    int offset = cpgl_->offset_volume2();
+
+    for (int i = 0; i < nchoose; i++) {
+        buf[n] = cpgl_->get_data()[i][offset];
+        n += size_one;
+    }
+}
+
+void DumpLocalGran::pack_particlearea1(int n)
+{
+    int offset = cpgl_->offset_particlearea1();
+
+    for (int i = 0; i < nchoose; i++) {
+        buf[n] = cpgl_->get_data()[i][offset];
+        n += size_one;
+    }
+}
+
+void DumpLocalGran::pack_particlearea2(int n)
+{
+    int offset = cpgl_->offset_particlearea2();
 
     for (int i = 0; i < nchoose; i++) {
         buf[n] = cpgl_->get_data()[i][offset];

@@ -40,7 +40,7 @@
     Copyright 2016-     DCS Computing GmbH, Linz
 ------------------------------------------------------------------------- */
 
-#if defined(LAMMPS_VTK) 
+#if defined(LAMMPS_VTK)
 
 #ifndef LMP_DUMP_LOCAL_GRAN_H
 #define LMP_DUMP_LOCAL_GRAN_H
@@ -61,9 +61,10 @@ class vtkAbstractArray;
 class vtkRectilinearGrid;
 class vtkUnstructuredGrid;
 
-namespace LAMMPS_NS {
+namespace LAMMPS_NS
+{
 
-/**
+  /**
  * @brief DumpLocalGran class
  *              write gran bond data to vtk arrays.
  *
@@ -73,7 +74,8 @@ namespace LAMMPS_NS {
  * for computes and fixes - these have to be given in the right order in the input script).
  * (Note: std::map elements are sorted by their keys.)
  */
-class DumpLocalGran : public Pointers {
+  class DumpLocalGran : public Pointers
+  {
   public:
     DumpLocalGran(LAMMPS *lmp, int _igroup, int _nclusterprocs, int _multiproc, int _nevery, int _filewriter, int _fileproc);
     ~DumpLocalGran();
@@ -84,26 +86,26 @@ class DumpLocalGran : public Pointers {
     int count();
     virtual void init_style();
     bigint memory_usage();
+    bool simplified;   // if true, points and lines are omitted, they are instead put into an array
 
   protected:
+    int nevery;        // dump frequency for output
+    int nclusterprocs; // number of procs that write to one file
+    int multiproc;     // number of procs writing files
+    int filewriter;    // 1 if this proc writes a file, else 0
+    int fileproc;      // ID of proc in my cluster who writes to file
+    int iregion;       // -1 if no region, else which region
+    char *idregion;    // region ID
 
-    int nevery;             // dump frequency for output
-    int nclusterprocs;      // number of procs that write to one file
-    int multiproc;          // number of procs writing files
-    int filewriter;         // 1 if this proc writes a file, else 0
-    int fileproc;           // ID of proc in my cluster who writes to file
-    int iregion;            // -1 if no region, else which region
-    char *idregion;         // region ID
+    int igroup;   // group id
+    int groupbit; // group mask
+    int nchoose;  // # of selected local datums
 
-    int igroup;             // group id
-    int groupbit;           // group mask
-    int nchoose;            // # of selected local datums
+    SortBuffer *sortBuffer; // to allow sorting of data
 
-    SortBuffer *sortBuffer;  // to allow sorting of data
-
-    int maxbuf;             // max size of buffer
-    double *buf;            // main buffer
-    int size_one;           // number of doubles used per particle
+    int maxbuf;   // max size of buffer
+    double *buf;  // main buffer
+    int size_one; // number of doubles used per particle
 
     class ComputePairGranLocal *cpgl_;
 
@@ -120,17 +122,19 @@ class DumpLocalGran : public Pointers {
 
     void define_properties();
     typedef void (DumpLocalGran::*FnPtrPack)(int);
-    
-    std::map<int, FnPtrPack> pack_choice;   // ptrs to pack functions
-    std::map<int, int> vtype;               // data type for each attribute
-    std::map<int, std::string> name;        // label for each attribute
-    std::set<int> vector_set;               // set of vector attributes; defines which are vectors
+
+    std::map<int, FnPtrPack> pack_choice; // ptrs to pack functions
+    std::map<int, int> vtype;             // data type for each attribute
+    std::map<int, std::string> name;      // label for each attribute
+    std::set<int> vector_set;             // set of vector attributes; defines which are vectors
+    std::set<int> vector2d_set;           // set of 2D vector attributes; defines which are 2D vectors
+    std::set<int> quaternion_set;         // set of quaternion attributes; defines which are quaternions
 
     // vtk data containers
-    vtkSmartPointer<vtkPoints> points;      // list of points, 2 points for each line cell
-    vtkSmartPointer<vtkCellArray> lineCells;// list of line cells
-    std::map<int, vtkSmartPointer<vtkAbstractArray> > myarrays; // list of a list of arrays that is presents data for each atom (x, v,...)
-                                                                // is then added to the point cells upon writing
+    vtkSmartPointer<vtkPoints> points;                         // list of points, 2 points for each line cell
+    vtkSmartPointer<vtkCellArray> lineCells;                   // list of line cells
+    std::map<int, vtkSmartPointer<vtkAbstractArray>> myarrays; // list of a list of arrays that is presents data for each atom (x, v,...)
+                                                               // is then added to the point cells upon writing
     int n_calls_;
 
     void buf2arrays(int, double *); // transfer data from buf array to vtk arrays
@@ -155,7 +159,19 @@ class DumpLocalGran : public Pointers {
     void pack_contact_point(int);
     void pack_ms_id1(int);
     void pack_ms_id2(int);
-};
+    void pack_quaternion1(int);
+    void pack_quaternion2(int);
+    void pack_shape1(int);
+    void pack_shape2(int);
+    void pack_blockiness1(int);
+    void pack_blockiness2(int);
+    void pack_inertia1(int);
+    void pack_inertia2(int);
+    void pack_volume1(int);
+    void pack_volume2(int);
+    void pack_particlearea1(int);
+    void pack_particlearea2(int);
+  };
 
 }
 

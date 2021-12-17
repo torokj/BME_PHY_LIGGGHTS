@@ -81,7 +81,7 @@ ComputePairGranLocal::ComputePairGranLocal(LAMMPS *lmp, int &iarg, int narg, cha
   posflag = velflag = idflag = fflag = torqueflag = histflag = areaflag = 1;
 
   // do not store fn, ft, heat flux, delta by default
-  fnflag = ftflag  = torquenflag = torquetflag = deltaflag = heatflag = cpflag = msidflag = 0;
+  fnflag = ftflag  = torquenflag = torquetflag = deltaflag = heatflag = cpflag = msidflag = quaternionflag = shapeflag = blockinessflag = inertiaflag = volumeflag = particleareaflag = 0;
 
   //no extra distance for building the list of pairs
   verbose = false;
@@ -108,6 +108,12 @@ ComputePairGranLocal::ComputePairGranLocal(LAMMPS *lmp, int &iarg, int narg, cha
     else if (strcmp(arg[iarg],"heatFlux") == 0) heatflag = 1;
     else if (strcmp(arg[iarg],"contactPoint") == 0) cpflag = 1;
     else if (strcmp(arg[iarg],"ms_id") == 0) msidflag = 1;
+    else if (strcmp(arg[iarg],"quaternion") == 0) quaternionflag = 1;
+    else if (strcmp(arg[iarg],"shape") == 0) shapeflag = 1;
+    else if (strcmp(arg[iarg],"blockiness") == 0) blockinessflag = 1;
+    else if (strcmp(arg[iarg],"inertia") == 0) inertiaflag = 1;
+    else if (strcmp(arg[iarg],"volume") == 0) volumeflag = 1;
+    else if (strcmp(arg[iarg],"particlearea") == 0) particleareaflag = 1;
     else if (strcmp(arg[iarg],"verbose") == 0) verbose = true;
     else if (strcmp(arg[iarg],"extraSurfDistance") == 0) error->all(FLERR,"this keyword is deprecated; neighbor->contactDistanceFactor is now used directly");
     else if(0 == strcmp(style,"wall/gran/local") || 0 == strcmp(style,"pair/gran/local"))
@@ -275,7 +281,7 @@ void ComputePairGranLocal::init_cpgl(bool requestflag)
   if(histflag && dnum == 0) error->all(FLERR,"Compute pair/gran/local or wall/gran/local can not calculate history values since pair or wall style does not compute them");
   // standard values: pos1,pos2,id1,id2,extra id for mesh wall,force,torque,contact area
 
-  nvalues = posflag*6 + velflag*6 + idflag*3 + fflag*3 + fnflag*3 + ftflag*3 + torqueflag*3 + torquenflag*3 + torquetflag*3 + histflag*dnum + areaflag + deltaflag + heatflag + cpflag*3 + msidflag*2;
+  nvalues = posflag*6 + velflag*6 + idflag*3 + fflag*3 + fnflag*3 + ftflag*3 + torqueflag*3 + torquenflag*3 + torquetflag*3 + histflag*dnum + areaflag + deltaflag + heatflag + cpflag*3 + msidflag*2 + quaternionflag*8 + shapeflag*6 + blockinessflag*4 + inertiaflag*6 + volumeflag*2 + particleareaflag*2;
   size_local_cols = nvalues;
 
 }
@@ -419,6 +425,7 @@ void ComputePairGranLocal::add_pair(int i,int j,double fx,double fy,double fz,do
     
     double del[3],r,rsq,radi,radj,contactArea;
     double *xi,*xj,xi_w[3],xj_w[3],*vi,*vj;
+    double *quaternioni, *quaternionj;
     int nlocal;
 
     if (!(atom->mask[i] & groupbit)) return;
@@ -435,6 +442,8 @@ void ComputePairGranLocal::add_pair(int i,int j,double fx,double fy,double fz,do
     xj = atom->x[j];
     vi = atom->v[i];
     vj = atom->v[j];
+    quaternioni = atom->quaternion[i];
+    quaternionj = atom->quaternion[j];
 
     if(ipair>=nmax)
     {
@@ -606,6 +615,32 @@ void ComputePairGranLocal::add_pair(int i,int j,double fx,double fy,double fz,do
         array[ipair][n++] = static_cast<double>(fix_ms->belongs_to(i));
         array[ipair][n++] = static_cast<double>(fix_ms->belongs_to(j));
     }
+    if(quaternionflag)
+    {
+        vectorToBuf4D(quaternioni,array[ipair],n);
+        vectorToBuf4D(quaternionj,array[ipair],n);
+    }
+    if(shapeflag)
+    {
+        vectorToBuf3D(atom->shape[i],array[ipair],n);
+        vectorToBuf3D(atom->shape[j],array[ipair],n);
+    }
+    if(blockinessflag){
+        vectorToBuf2D(atom->blockiness[i],array[ipair],n);
+        vectorToBuf2D(atom->blockiness[j],array[ipair],n);
+    }
+    if(inertiaflag){
+        vectorToBuf3D(atom->inertia[i],array[ipair],n);
+        vectorToBuf3D(atom->inertia[j],array[ipair],n);
+    }
+    if(volumeflag){
+        array[ipair][n++] = atom->volume[i];
+        array[ipair][n++] = atom->volume[j];
+    }
+    if(particleareaflag){
+        array[ipair][n++] = atom->area[i];
+        array[ipair][n++] = atom->area[j];
+    }
 
     ipair++;
 }
@@ -736,6 +771,31 @@ void ComputePairGranLocal::add_wall_1(int iFMG,int idTri,int iP,double *contact_
     {
         n+=2;
     }
+
+    if(quaternionflag)
+    {
+        n+=8;
+    }
+
+    if(shapeflag){
+        n+=6;
+    }
+
+    if(blockinessflag){
+        n+=4;
+    }
+
+    if(inertiaflag){
+        n+=6;
+    }
+
+    if(volumeflag){
+        n+=2;
+    }
+
+    if(particleareaflag){
+        n+=2;
+    }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -862,6 +922,39 @@ void ComputePairGranLocal::add_wall_2(int i,double fx,double fy,double fz,double
     {
         n++;
         array[ipair][n++] = static_cast<double>(fix_ms->belongs_to(i));
+    }
+    if(quaternionflag)
+    {
+        n += 4;
+        array[ipair][n++] = atom->quaternion[i][0];
+        array[ipair][n++] = atom->quaternion[i][1];
+        array[ipair][n++] = atom->quaternion[i][2];
+        array[ipair][n++] = atom->quaternion[i][3];
+    }
+    if(shapeflag){
+        n+=3;
+        array[ipair][n++] = atom->shape[i][0];
+        array[ipair][n++] = atom->shape[i][1];
+        array[ipair][n++] = atom->shape[i][2];
+    }
+    if(blockinessflag){
+        n+=2;
+        array[ipair][n++] = atom->blockiness[i][0];
+        array[ipair][n++] = atom->blockiness[i][1];
+    }
+    if(inertiaflag){
+        n+=3;
+        array[ipair][n++] = atom->inertia[i][0];
+        array[ipair][n++] = atom->inertia[i][1];
+        array[ipair][n++] = atom->inertia[i][2];
+    }
+    if(volumeflag){
+        n+=1;
+        array[ipair][n++] = atom->volume[i];
+    }
+    if(particleareaflag){
+        n+=1;
+        array[ipair][n++] = atom->area[i];
     }
     // wall_1 and wall_2 are always called
 

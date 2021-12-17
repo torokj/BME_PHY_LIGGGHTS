@@ -157,6 +157,54 @@ class ComputePairGranLocal : public Compute {
     return (msidflag > 0 ?   posflag*6+velflag*6+idflag*3+fflag*3+fnflag*3+ftflag*3+torqueflag*3+torquenflag*3+torquetflag*3+histflag*dnum+areaflag*1 + deltaflag*1 + heatflag*1 + cpflag*3 +1 : -1);
   }
 
+  virtual int offset_quaternion1(){
+    return (quaternionflag > 0 ?   posflag*6+velflag*6+idflag*3+fflag*3+fnflag*3+ftflag*3+torqueflag*3+torquenflag*3+torquetflag*3+histflag*dnum+areaflag*1 + deltaflag*1 + heatflag*1 + cpflag*3 + msidflag*2: -1);
+  }
+
+  virtual int offset_quaternion2(){
+    return (quaternionflag > 0 ?   posflag*6+velflag*6+idflag*3+fflag*3+fnflag*3+ftflag*3+torqueflag*3+torquenflag*3+torquetflag*3+histflag*dnum+areaflag*1 + deltaflag*1 + heatflag*1 + cpflag*3 + msidflag*2 + 4: -1);
+  }
+
+  virtual int offset_shape1(){
+    return (shapeflag > 0 ?   posflag*6+velflag*6+idflag*3+fflag*3+fnflag*3+ftflag*3+torqueflag*3+torquenflag*3+torquetflag*3+histflag*dnum+areaflag*1 + deltaflag*1 + heatflag*1 + cpflag*3 + msidflag*2 + quaternionflag*8: -1);
+  }
+
+  virtual int offset_shape2(){
+    return (shapeflag > 0 ?   posflag*6+velflag*6+idflag*3+fflag*3+fnflag*3+ftflag*3+torqueflag*3+torquenflag*3+torquetflag*3+histflag*dnum+areaflag*1 + deltaflag*1 + heatflag*1 + cpflag*3 + msidflag*2 + quaternionflag*8 + 3: -1);
+  }
+
+  virtual int offset_blockiness1(){
+    return (blockinessflag > 0 ?   posflag*6+velflag*6+idflag*3+fflag*3+fnflag*3+ftflag*3+torqueflag*3+torquenflag*3+torquetflag*3+histflag*dnum+areaflag*1 + deltaflag*1 + heatflag*1 + cpflag*3 + msidflag*2 + quaternionflag*4 + shapeflag*6: -1);
+  }
+
+  virtual int offset_blockiness2(){
+    return (blockinessflag > 0 ?   posflag*6+velflag*6+idflag*3+fflag*3+fnflag*3+ftflag*3+torqueflag*3+torquenflag*3+torquetflag*3+histflag*dnum+areaflag*1 + deltaflag*1 + heatflag*1 + cpflag*3 + msidflag*2 + quaternionflag*4 + shapeflag*6 + 2: -1);
+  }
+
+  virtual int offset_inertia1(){
+    return (inertiaflag > 0 ?   posflag*6+velflag*6+idflag*3+fflag*3+fnflag*3+ftflag*3+torqueflag*3+torquenflag*3+torquetflag*3+histflag*dnum+areaflag*1 + deltaflag*1 + heatflag*1 + cpflag*3 + msidflag*2 + quaternionflag*4 + shapeflag*6 + blockinessflag*4: -1);
+  }
+
+  virtual int offset_inertia2(){
+    return (inertiaflag > 0 ?   posflag*6+velflag*6+idflag*3+fflag*3+fnflag*3+ftflag*3+torqueflag*3+torquenflag*3+torquetflag*3+histflag*dnum+areaflag*1 + deltaflag*1 + heatflag*1 + cpflag*3 + msidflag*2 + quaternionflag*4 + shapeflag*6 + blockinessflag*4 + 3: -1);
+  }
+
+  virtual int offset_volume1(){
+    return (volumeflag > 0 ?   posflag*6+velflag*6+idflag*3+fflag*3+fnflag*3+ftflag*3+torqueflag*3+torquenflag*3+torquetflag*3+histflag*dnum+areaflag*1 + deltaflag*1 + heatflag*1 + cpflag*3 + msidflag*2 + quaternionflag*4 + shapeflag*6 + blockinessflag*4 + inertiaflag*6: -1);
+  }
+
+  virtual int offset_volume2(){
+    return (volumeflag > 0 ?   posflag*6+velflag*6+idflag*3+fflag*3+fnflag*3+ftflag*3+torqueflag*3+torquenflag*3+torquetflag*3+histflag*dnum+areaflag*1 + deltaflag*1 + heatflag*1 + cpflag*3 + msidflag*2 + quaternionflag*4 + shapeflag*6 + blockinessflag*4 + inertiaflag*6 + 1: -1);
+  }
+
+  virtual int offset_particlearea1(){
+    return (particleareaflag > 0 ?   posflag*6+velflag*6+idflag*3+fflag*3+fnflag*3+ftflag*3+torqueflag*3+torquenflag*3+torquetflag*3+histflag*dnum+areaflag*1 + deltaflag*1 + heatflag*1 + cpflag*3 + msidflag*2 + quaternionflag*4 + shapeflag*6 + blockinessflag*4 + inertiaflag*6 + volumeflag*2: -1);
+  }
+
+  virtual int offset_particlearea2(){
+    return (particleareaflag > 0 ?   posflag*6+velflag*6+idflag*3+fflag*3+fnflag*3+ftflag*3+torqueflag*3+torquenflag*3+torquetflag*3+histflag*dnum+areaflag*1 + deltaflag*1 + heatflag*1 + cpflag*3 + msidflag*2 + quaternionflag*4 + shapeflag*6 + blockinessflag*4 + inertiaflag*6 + volumeflag*2 + 1: -1);
+  }
+
  protected:
 
   int nvalues;      // number of double values per entry
@@ -184,7 +232,7 @@ class ComputePairGranLocal : public Compute {
 
   int ipair;
 
-  int posflag,velflag,idflag,fflag,fnflag,ftflag,torqueflag,torquenflag,torquetflag,histflag,areaflag,deltaflag,heatflag,cpflag,msidflag;
+  int posflag,velflag,idflag,fflag,fnflag,ftflag,torqueflag,torquenflag,torquetflag,histflag,areaflag,deltaflag,heatflag,cpflag,msidflag,quaternionflag,shapeflag,blockinessflag,inertiaflag,volumeflag,particleareaflag;
 
   bool   verbose;
 

@@ -677,10 +677,16 @@ void Atom::data_atoms(int n, char *buf)
   next = strchr(buf,'\n');
   *next = '\0';
   int nwords = count_words(buf);
-  *next = '\n';
 
-  if (nwords != avec->size_data_atom && nwords != avec->size_data_atom + 3)
-    error->all(FLERR,"Incorrect atom format in data file");
+  if (nwords != avec->size_data_atom && nwords != avec->size_data_atom + 3) {
+    char* errmessage = (char*) malloc(sizeof(char) * strlen(buf) + 128);
+    errmessage[0] = '\n';
+    sprintf(errmessage, "Incorrect atom format in data file. The line \"%s\" contains %d entries, but %d or %d is needed.", buf, nwords, avec->size_data_atom, avec->size_data_atom + 3);
+    error->all(FLERR, errmessage);
+    free(errmessage);
+  }
+
+  *next = '\n';
 
   char **values = new char*[nwords];
 
@@ -742,11 +748,11 @@ void Atom::data_atoms(int n, char *buf)
 
     values[0] = strtok(buf," \t\n\r\f");
     if (values[0] == NULL)
-      error->all(FLERR,"Incorrect atom format in data file");
+      error->all(FLERR,"Incorrect atom format in data file. Next value could not be found.");
     for (int m = 1; m < nwords; m++) {
       values[m] = strtok(NULL," \t\n\r\f");
       if (values[m] == NULL)
-        error->all(FLERR,"Incorrect atom format in data file");
+        error->all(FLERR,"Incorrect atom format in data file. Next value could not be found.");
     }
 
     if (imageflag)

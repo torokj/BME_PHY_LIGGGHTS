@@ -94,7 +94,7 @@ enum{TYPE,TYPE_FRACTION,MOLECULE,X,Y,Z,CHARGE,MASS,SHAPE,LENGTH,
      MESO_E,MESO_CV,MESO_RHO,INAME,DNAME,
      VX,VY,VZ,OMEGAX,OMEGAY,OMEGAZ,PROPERTYPERATOM,BLOCKINESS,
      ASPECTRATIO, INERTIAX, INERTIAY, INERTIAZ,
-     SMD_MASS_DENSITY, SMD_CONTACT_RADIUS}; 
+     SMD_MASS_DENSITY, SMD_CONTACT_RADIUS,DX,DY,DZ}; 
 
 #define BIG INT_MAX
 
@@ -192,6 +192,24 @@ void Set::command(int narg, char **arg)
       if (strstr(arg[iarg+1],"v_") == arg[iarg+1]) varparse(arg[iarg+1],1);
       else dvalue = force->numeric(FLERR,arg[iarg+1]);
       set(Z);
+      iarg += 2;
+    } else if (strcmp(arg[iarg],"dx") == 0) {
+      if (iarg+2 > narg) error->all(FLERR,"Illegal set command");
+      if (strstr(arg[iarg+1],"v_") == arg[iarg+1]) varparse(arg[iarg+1],1);
+      else dvalue = force->numeric(FLERR,arg[iarg+1]);
+      set(DX);
+      iarg += 2;
+    } else if (strcmp(arg[iarg],"dy") == 0) {
+      if (iarg+2 > narg) error->all(FLERR,"Illegal set command");
+      if (strstr(arg[iarg+1],"v_") == arg[iarg+1]) varparse(arg[iarg+1],1);
+      else dvalue = force->numeric(FLERR,arg[iarg+1]);
+      set(DY);
+      iarg += 2;
+    } else if (strcmp(arg[iarg],"dz") == 0) {
+      if (iarg+2 > narg) error->all(FLERR,"Illegal set command");
+      if (strstr(arg[iarg+1],"v_") == arg[iarg+1]) varparse(arg[iarg+1],1);
+      else dvalue = force->numeric(FLERR,arg[iarg+1]);
+      set(DZ);
       iarg += 2;
     } else if (strcmp(arg[iarg],"vx") == 0) {  
       if (iarg+2 > narg) error->all(FLERR,"Illegal set command");
@@ -355,7 +373,7 @@ void Set::command(int narg, char **arg)
       if (!atom->ellipsoid_flag && !atom->tri_flag && !atom->superquadric_flag)
         error->all(FLERR,"Cannot set this attribute for this atom style");
       if(strcmp(arg[iarg],"quat") == 0)
-      set(QUAT);
+        set(QUAT);
       else
         set(QUAT_DIRECT);
       iarg += 5;
@@ -796,6 +814,9 @@ void Set::set(int keyword)
     else if (keyword == X) atom->x[i][0] = dvalue;
     else if (keyword == Y) atom->x[i][1] = dvalue;
     else if (keyword == Z) atom->x[i][2] = dvalue;
+    else if (keyword == DX) atom->x[i][0] += dvalue;
+    else if (keyword == DY) atom->x[i][1] += dvalue;
+    else if (keyword == DZ) atom->x[i][2] += dvalue;
     else if (keyword == VX) atom->v[i][0] = dvalue; 
     else if (keyword == VY) atom->v[i][1] = dvalue;
     else if (keyword == VZ) atom->v[i][2] = dvalue;

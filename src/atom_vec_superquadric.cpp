@@ -74,7 +74,7 @@ AtomVecSuperquadric::AtomVecSuperquadric(LAMMPS *lmp) : AtomVec(lmp)
   size_reverse = 6;
   size_border = 23;
   size_velocity = 6;
-  size_data_atom = 8;
+  size_data_atom = 12;
   size_data_vel = 7;
   xcol_data = 9;
 
@@ -1199,7 +1199,11 @@ void AtomVecSuperquadric::data_atom(double *coord, tagint imagetmp, char **value
 
   angmom[nlocal][0] = angmom[nlocal][1] = angmom[nlocal][2] = 0.0;
 
-  quatIdentity4D(quaternion[nlocal]);
+/*  quatIdentity4D(quaternion[nlocal]);*/
+  quaternion[nlocal][1] = atof(values[11]);
+  quaternion[nlocal][2] = atof(values[12]);
+  quaternion[nlocal][3] = atof(values[13]);
+  quaternion[nlocal][0] = atof(values[14]);
   MathExtraLiggghtsNonspherical::bounding_sphere_radius_superquadric(shape[nlocal], blockiness[nlocal], radius+nlocal);
 
   MathExtraLiggghtsNonspherical::volume_superquadric(shape[nlocal], blockiness[nlocal], volume+nlocal);

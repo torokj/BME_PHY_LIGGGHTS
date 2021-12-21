@@ -347,7 +347,7 @@ void DumpMozi::write_header(bigint ndump)
       }
       fwrite(headend,strlen(headend),1,fp);
     }
-    fwrite(&d,D,1,fp);
+    if (ndump > 0) fwrite(&d,D,1,fp);
   } else {
     if (me == 0) {
       if (ftell(fp) == 0) {
@@ -361,7 +361,7 @@ void DumpMozi::write_header(bigint ndump)
 	}
 	fwrite(headend,strlen(headend),1,fp);
       }
-      fwrite(&d,D,1,fp);
+      if (ndump > 0) fwrite(&d,D,1,fp);
     }
   }
 }
@@ -1235,11 +1235,9 @@ int DumpMozi::pre_parse_fields(int narg, char **arg)
       if (strcmp(arg[iarg],"ContactForces") == 0) {
 	iarg++;
       } else if (strcmp(arg[iarg],"stl") == 0) {
-	stl_num++;
-	iarg++;
+	stl_num++; iarg++;
       } else if (strcmp(arg[iarg],"Wall") == 0) {
-	wall_num++;
-	iarg++;
+	wall_num++; iarg++;
       } else {
 	sprintf(errmsg,"Dump mozi does not know about %s",arg[iarg]);
 	error->all(FLERR, errmsg);

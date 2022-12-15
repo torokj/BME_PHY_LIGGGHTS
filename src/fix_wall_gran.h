@@ -220,6 +220,7 @@ class FixWallGran : public Fix, public LIGGGHTS::IContactHistorySetup {
   int atom_type_wall_;
   int wtype;
   int middle;
+  int linear;
 
   int computeflag_;
 

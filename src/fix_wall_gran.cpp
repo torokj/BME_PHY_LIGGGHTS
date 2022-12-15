@@ -117,6 +117,7 @@ FixWallGran::FixWallGran(LAMMPS *lmp, int narg, char **arg) :
     n_FixMesh_ = 0;
     dnum_ = 0;
     middle = 0;
+    linear = 0;
 
     r0_ = 0.;
 
@@ -313,6 +314,9 @@ FixWallGran::FixWallGran(LAMMPS *lmp, int narg, char **arg) :
         } else if (strcmp(arg[iarg_],"middle") == 0) {
 	  middle = 1;
 	  iarg_ ++;
+        } else if (strcmp(arg[iarg_],"linear") == 0) {
+	  linear = 1;
+	  iarg_ ++;
         } else if (strcmp(arg[iarg_],"shear") == 0) {
           if (iarg_+3 > narg)
             error->fix_error(FLERR,this,"not enough arguments for 'shear'");
@@ -321,6 +325,10 @@ FixWallGran::FixWallGran(LAMMPS *lmp, int narg, char **arg) :
 
 	  if (strcmp(arg[iarg_+1],"middle") == 0) {
 	    middle = 1;
+	    iarg_ ++;
+	  }
+	  else if (strcmp(arg[iarg_+1],"linear") == 0) {
+	    linear = 1;
 	    iarg_ ++;
 	  }
           if (strcmp(arg[iarg_+1],"x") == 0) shearDim_ = 0;
@@ -1153,6 +1161,15 @@ void FixWallGran::post_force_primitive(int vflag)
 	      if (x_[iPart][j] < 0) v_wall[i] = -fabs(v_wall[i]);
 	      else v_wall[i] = fabs(v_wall[i]);
 	    }
+	  }
+	} else if (linear) {
+	  for(int i = 0; i < 3; i++) {
+	    j = (i + 1) % 3;
+	    if (j == wtype) j = (i + 1) % 3;
+      if (v_wall[i] != 0.0) {
+        if (x_[iPart][j] < 0) v_wall[i] = -fabs(x_[iPart][j] * v_wall[i]);
+	      else v_wall[i] = fabs(x_[iPart][j] * v_wall[i]);
+      }
 	  }
 	}
         impl->compute_force(this, sidata, intersectflag, v_wall);

@@ -1065,7 +1065,7 @@ void FixWallGran::post_force_primitive(int vflag)
 
   for (int iCont = 0; iCont < nNeigh ; iCont++, neighborList++)
   {
-    int iPart = *neighborList;
+    int iPart = *neighborList; // The index of the particle
 
     if(!(mask[iPart] & groupbit)) continue;
 
@@ -1163,14 +1163,14 @@ void FixWallGran::post_force_primitive(int vflag)
 	    }
 	  }
 	} else if (linear) {
-	  for(int i = 0; i < 3; i++) {
-	    j = (i + 1) % 3;
-	    if (j == wtype) j = (i + 1) % 3;
-      if (v_wall[i] != 0.0) {
-        if (x_[iPart][j] < 0) v_wall[i] = -fabs(x_[iPart][j] * v_wall[i]);
-	      else v_wall[i] = fabs(x_[iPart][j] * v_wall[i]);
-      }
-	  }
+    j = 0;
+    if (shearDim_ != 0 && wtype != LAMMPS_NS::PRIMITIVE_WALL_DEFINITIONS::WallType::XPLANE) goto setVel;
+    j = 1;
+    if (shearDim_ != 1 && wtype != LAMMPS_NS::PRIMITIVE_WALL_DEFINITIONS::WallType::YPLANE) goto setVel;
+    j = 2;
+    if (shearDim_ != 2 && wtype != LAMMPS_NS::PRIMITIVE_WALL_DEFINITIONS::WallType::ZPLANE) goto setVel;
+    setVel:
+    v_wall[shearDim_] = x_[iPart][j] * v_wall[shearDim_];
 	}
         impl->compute_force(this, sidata, intersectflag, v_wall);
       } else {

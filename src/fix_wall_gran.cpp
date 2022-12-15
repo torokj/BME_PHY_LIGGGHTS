@@ -1170,7 +1170,11 @@ void FixWallGran::post_force_primitive(int vflag)
     j = 2;
     if (shearDim_ != 2 && wtype != LAMMPS_NS::PRIMITIVE_WALL_DEFINITIONS::WallType::ZPLANE) goto setVel;
     setVel:
-    v_wall[shearDim_] = x_[iPart][j] * v_wall[shearDim_];
+    #ifdef NONSPHERICAL_ACTIVE_FLAG
+    v_wall[shearDim_] = sidata.contact_point[j] * vshear_;
+    #else
+    v_wall[shearDim_] = x_[iPart][j] * vshear_;
+    #endif
 	}
         impl->compute_force(this, sidata, intersectflag, v_wall);
       } else {
